@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Raw Materials Management</h1>
+    <a href="{{ url_for('add_material') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Add Material
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Unit</th>
+                        <th>Current Price</th>
+                        <th>Stock Quantity</th>
+                        <th>Minimum Stock</th>
+                        <th>Supplier</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in materials %}
+                    <tr>
+                        <td><strong>{{ material.name }}</strong></td>
+                        <td>{{ material.unit }}</td>
+                        <td>KSh {{ "%.2f"|format(material.current_price) }}</td>
+                        <td>{{ material.stock_quantity }} {{ material.unit }}</td>
+                        <td>{{ material.minimum_stock }} {{ material.unit }}</td>
+                        <td>{{ material.supplier or 'N/A' }}</td>
+                        <td>
+                            {% if material.stock_quantity <= material.minimum_stock %}
+                                <span class="badge bg-danger">Low Stock</span>
+                            {% else %}
+                                <span class="badge bg-success">In Stock</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editMaterial({{ material.id }})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

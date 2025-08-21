@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Dashboard</h1>
+    <span class="text-muted">{{ moment().strftime('%B %d, %Y') if moment else 'Today' }}</span>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-spray-can fa-2x mb-2"></i>
+                <h3>{{ total_products }}</h3>
+                <p>Total Products</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-boxes fa-2x mb-2"></i>
+                <h3>{{ total_materials }}</h3>
+                <p>Raw Materials</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                <h3>{{ low_stock_materials }}</h3>
+                <p>Low Stock Alerts</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                <h3>{{ recent_analyses|length }}</h3>
+                <p>Recent Analyses</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-calculator me-2"></i>Recent Cost Analyses</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_analyses %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Total Cost</th>
+                                    <th>Recommended Price</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for analysis in recent_analyses %}
+                                <tr>
+                                    <td>{{ analysis.product.name }}</td>
+                                    <td>KSh {{ "%.2f"|format(analysis.total_cost) }}</td>
+                                    <td>KSh {{ "%.2f"|format(analysis.recommended_price) }}</td>
+                                    <td>{{ analysis.calculated_at.strftime('%Y-%m-%d') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No recent analyses available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-globe me-2"></i>Recent Market Data</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_market_data %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Price</th>
+                                    <th>Competitor</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for data in recent_market_data %}
+                                <tr>
+                                    <td>{{ data.product_name[:30] }}...</td>
+                                    <td>KSh {{ "%.2f"|format(data.price) }}</td>
+                                    <td>{{ data.competitor }}</td>
+                                    <td>{{ data.scraped_at.strftime('%Y-%m-%d') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No recent market data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

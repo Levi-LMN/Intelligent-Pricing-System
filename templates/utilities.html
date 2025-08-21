@@ -1,0 +1,29 @@
+<!-- templates/utilities.html -->
+{% extends "base.html" %}
+{% block content %}
+<h1>Utilities</h1>
+<a href="{{ url_for('add_utility') }}" class="btn btn-primary mb-3">Add New Utility</a>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Cost per Unit</th>
+            <th>Unit</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for utility in utilities %}
+        <tr>
+            <td>{{ utility.name }}</td>
+            <td>${{ "%.2f"|format(utility.cost_per_unit) }}</td>
+            <td>{{ utility.unit }}</td>
+            <td>
+                <a href="{{ url_for('edit_utility', utility_id=utility.id) }}" class="btn btn-sm btn-info">Edit</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

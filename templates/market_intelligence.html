@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-4">
+    <h1>Market Intelligence</h1>
+    <p class="text-muted">Scrape competitor prices and analyze market trends</p>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Price Scraper</h5>
+            </div>
+            <div class="card-body">
+                <form id="priceScraperForm">
+                    <div class="mb-3">
+                        <label for="search_term" class="form-label">Search Term</label>
+                        <input type="text" class="form-control" id="search_term" name="search_term" placeholder="e.g., liquid detergent" required>
+                        <small class="form-text text-muted">Enter product name or category to search</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i>Scrape Prices
+                    </button>
+                </form>
+
+                <div id="scrapeResults" class="mt-3 d-none">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span id="scrapeCount">0</span> products scraped successfully!
+                    </div>
+                </div>
+
+                <div id="scrapeLoading" class="mt-3 d-none text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Scraping...</span>
+                    </div>
+                    <p class="mt-2">Scraping market data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Market Data</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Price</th>
+                                <th>Size</th>
+                                <th>Competitor</th>
+                                <th>Scraped Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in market_data %}
+                            <tr>
+                                <td>{{ data.product_name[:40] }}{% if data.product_name|length > 40 %}...{% endif %}</td>
+                                <td><strong>KSh {{ "%.2f"|format(data.price) }}</strong></td>
+                                <td>{{ data.size_info }}</td>
+                                <td>{{ data.competitor }}</td>
+                                <td>{{ data.scraped_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if data.url %}
+                                    <a href="{{ data.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('priceScraperForm');
+    const scrapeResults = document.getElementById('scrapeResults');
+    const scrapeLoading = document.getElementById('scrapeLoading');
+    const scrapeCount = document.getElementById('scrapeCount');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const data = {
+            search_term: formData.get('search_term')
+        };
+
+        // Show loading spinner
+        scrapeLoading.classList.remove('d-none');
+        scrapeResults.classList.add('d-none');
+
+        fetch('/api/scrape-prices', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            scrapeLoading.classList.add('d-none');
+
+            if (data.success) {
+                scrapeCount.textContent = data.count;
+                scrapeResults.classList.remove('d-none');
+
+                // Refresh page after 2 seconds to show new data
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                alert('Error scraping prices: ' + data.error);
+            }
+        })
+        .catch(error => {
+            scrapeLoading.classList.add('d-none');
+            alert('Error scraping prices: ' + error.message);
+        });
+    });
+});
+</script>
+{% endblock %}

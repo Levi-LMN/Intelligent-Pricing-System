@@ -1,0 +1,485 @@
+<!-- templates/product_recipe.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1>Recipe for {{ product.name }}</h1>
+        <p class="text-muted mb-0">Batch Size: {{ product.batch_size }} units</p>
+    </div>
+    <a href="{{ url_for('products') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Products
+    </a>
+</div>
+
+<div class="row">
+    <!-- Current Recipe -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list-ul me-2"></i>Current Recipe
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if product.recipes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Quantity per Batch</th>
+                                    <th>Unit</th>
+                                    <th>Unit Price (KSh)</th>
+                                    <th>Total Cost (KSh)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set ns = namespace(total_material_cost=0) %}
+                                {% for recipe in product.recipes %}
+                                    {% set item_cost = recipe.quantity_per_batch * recipe.material.current_price %}
+                                    {% set ns.total_material_cost = ns.total_material_cost + item_cost %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ recipe.material.name }}</strong>
+                                            {% if recipe.material.stock_quantity <= recipe.material.minimum_stock %}
+                                                <span class="badge bg-warning ms-2">Low Stock</span>
+                                            {% endif %}
+                                            {% if recipe.is_percentage_based %}
+                                                <span class="badge bg-info ms-2">%</span>
+                                            {% endif %}
+                                            {% if recipe.notes %}
+                                                <br><small class="text-muted">{{ recipe.notes }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                            {{ recipe.quantity_per_batch }}
+                            {% if recipe.quantity_per_batch < 1 and recipe.material.unit == 'kg' %}
+                                <small class="text-muted">({{ "%.1f"|format(recipe.quantity_per_batch * 100 / product.batch_size) }}%)</small>
+                            {% endif %}
+                        </td>
+                                        <td>{{ recipe.material.unit }}</td>
+                                        <td>{{ "%.2f"|format(recipe.material.current_price) }}</td>
+                                        <td>{{ "%.2f"|format(item_cost) }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary edit-recipe-btn"
+                                                    data-material-id="{{ recipe.material.id }}"
+                                                    data-material-name="{{ recipe.material.name }}"
+                                                    data-quantity="{{ recipe.quantity_per_batch }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger delete-recipe-btn"
+                                                    data-recipe-id="{{ recipe.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-primary">
+                                    <td colspan="4"><strong>Total Material Cost per Batch</strong></td>
+                                    <td><strong>KSh {{ "%.2f"|format(ns.total_material_cost) }}</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Cost Breakdown Summary -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Cost Summary (per batch)</h6>
+                                    <ul class="list-unstyled mb-0">
+                                        <li>Materials: <strong>KSh {{ "%.2f"|format(ns.total_material_cost) }}</strong></li>
+                                        <li>Labor: <strong>KSh {{ "%.2f"|format(product.labor_cost_per_batch) }}</strong></li>
+                                        <li>Overhead ({{ product.overhead_percentage }}%): <strong>KSh {{ "%.2f"|format(ns.total_material_cost * product.overhead_percentage / 100) }}</strong></li>
+                                        <li>Packaging: <strong>KSh {{ "%.2f"|format(product.packaging_cost) }}</strong></li>
+                                        <hr>
+                                        {% set total_cost = ns.total_material_cost + product.labor_cost_per_batch + (ns.total_material_cost * product.overhead_percentage / 100) + product.packaging_cost %}
+                                        <li class="fw-bold">Total Cost: <strong>KSh {{ "%.2f"|format(total_cost) }}</strong></li>
+                                        <li class="text-success fw-bold">Recommended Price: <strong>KSh {{ "%.2f"|format(total_cost * (1 + product.profit_margin_percentage / 100)) }}</strong></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Per Unit Cost</h6>
+                                    <ul class="list-unstyled mb-0">
+                                        <li>Cost per Unit: <strong>KSh {{ "%.2f"|format(total_cost / product.batch_size) }}</strong></li>
+                                        <li>Price per Unit: <strong>KSh {{ "%.2f"|format((total_cost * (1 + product.profit_margin_percentage / 100)) / product.batch_size) }}</strong></li>
+                                        <li>Profit per Unit: <strong>KSh {{ "%.2f"|format(((total_cost * (1 + product.profit_margin_percentage / 100)) - total_cost) / product.batch_size) }}</strong></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No recipe items added yet</h5>
+                        <p class="text-muted">Start by adding materials to create the recipe for this product.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Recipe Item -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-plus me-2"></i>Add Recipe Item
+                </h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('add_recipe_item', product_id=product.id) }}" method="POST" id="recipeForm">
+                    <input type="hidden" name="product_id" value="{{ product.id }}">
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (Optional)</label>
+                        <input type="text" name="notes" id="notes" class="form-control"
+                               placeholder="e.g., 'For fragrance', 'Active ingredient', etc.">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="material_id" class="form-label">Material</label>
+                        <select name="material_id" id="material_id" class="form-select" required>
+                            <option value="">Select a material...</option>
+                            {% for material in materials %}
+                                <option value="{{ material.id }}"
+                                        data-unit="{{ material.unit }}"
+                                        data-price="{{ material.current_price }}"
+                                        data-stock="{{ material.stock_quantity }}">
+                                    {{ material.name }} ({{ material.unit }}) - KSh {{ "%.2f"|format(material.current_price) }}
+                                    {% if material.stock_quantity <= material.minimum_stock %}
+                                        - LOW STOCK
+                                    {% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="quantity_type" class="form-label">Quantity Type</label>
+                        <select name="quantity_type" id="quantity_type" class="form-select">
+                            <option value="absolute">Absolute Quantity</option>
+                            <option value="percentage">Percentage of Batch</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity per Batch</label>
+                        <div class="input-group">
+                            <input type="number" name="quantity" id="quantity" class="form-control"
+                                   step="0.01" min="0" required>
+                            <span class="input-group-text" id="unit-display">unit</span>
+                        </div>
+                        <small class="form-text text-muted" id="quantity-help">
+                            Current stock: <span id="stock-display">-</span>
+                        </small>
+                        <div id="percentage-info" class="mt-2 p-2 bg-light rounded" style="display: none;">
+                            <small class="text-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Percentage Mode:</strong> Enter percentage value (e.g., 10 for 10%)
+                                <br>
+                                <span id="calculated-quantity"></span>
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Estimated Cost</label>
+                        <div class="input-group">
+                            <span class="input-group-text">KSh</span>
+                            <input type="text" class="form-control" id="estimated-cost" readonly>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus me-2"></i>Add to Recipe
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Material Stock Status -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-warehouse me-2"></i>Stock Status
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center">
+                            {% set in_stock_count = 0 %}
+                            {% for material in materials %}
+                                {% if material.stock_quantity > material.minimum_stock %}
+                                    {% set in_stock_count = in_stock_count + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            <div class="text-success h4">{{ in_stock_count }}</div>
+                            <small class="text-muted">In Stock</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            {% set low_stock_count = 0 %}
+                            {% for material in materials %}
+                                {% if material.stock_quantity <= material.minimum_stock %}
+                                    {% set low_stock_count = low_stock_count + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            <div class="text-warning h4">{{ low_stock_count }}</div>
+                            <small class="text-muted">Low Stock</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Recipe Modal -->
+<div class="modal fade" id="editRecipeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="editRecipeForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Recipe Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit-material-id" name="material_id">
+                    <input type="hidden" name="product_id" value="{{ product.id }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Material</label>
+                        <input type="text" id="edit-material-name" class="form-control" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit-quantity" class="form-label">Quantity per Batch</label>
+                        <input type="number" id="edit-quantity" name="quantity" class="form-control" step="0.01" min="0" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Recipe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle material selection change
+    const materialSelect = document.getElementById('material_id');
+    const quantityInput = document.getElementById('quantity');
+    const quantityTypeSelect = document.getElementById('quantity_type');
+    const unitDisplay = document.getElementById('unit-display');
+    const stockDisplay = document.getElementById('stock-display');
+    const estimatedCost = document.getElementById('estimated-cost');
+    const percentageInfo = document.getElementById('percentage-info');
+    const calculatedQuantity = document.getElementById('calculated-quantity');
+    const batchSize = {{ product.batch_size }};
+
+    function updateMaterialInfo() {
+        const selectedOption = materialSelect.options[materialSelect.selectedIndex];
+        if (selectedOption.value) {
+            const unit = selectedOption.dataset.unit;
+            const price = parseFloat(selectedOption.dataset.price);
+            const stock = parseFloat(selectedOption.dataset.stock);
+
+            unitDisplay.textContent = quantityTypeSelect.value === 'percentage' ? '%' : unit;
+            stockDisplay.textContent = stock + ' ' + unit;
+
+            // Calculate estimated cost
+            calculateCost();
+        } else {
+            unitDisplay.textContent = 'unit';
+            stockDisplay.textContent = '-';
+            estimatedCost.value = '';
+            calculatedQuantity.textContent = '';
+        }
+    }
+
+    function calculateCost() {
+        const selectedOption = materialSelect.options[materialSelect.selectedIndex];
+        if (!selectedOption.value) return;
+
+        const price = parseFloat(selectedOption.dataset.price);
+        const unit = selectedOption.dataset.unit;
+        let quantity = parseFloat(quantityInput.value) || 0;
+        let actualQuantity = quantity;
+
+        if (quantityTypeSelect.value === 'percentage') {
+            // Convert percentage to actual quantity
+            // For weight-based materials (kg), calculate based on total batch weight
+            // For volume-based materials (ml, L), calculate based on batch size
+            if (unit === 'kg') {
+                // Assume total batch weight estimation - you might want to make this configurable
+                const estimatedBatchWeight = batchSize * 0.02; // 20g per unit as default
+                actualQuantity = (quantity / 100) * estimatedBatchWeight;
+            } else if (unit === 'ml' || unit === 'L') {
+                // For liquids, calculate based on batch size
+                actualQuantity = (quantity / 100) * batchSize * (unit === 'L' ? 0.001 : 1);
+            } else {
+                // For pieces, calculate based on batch size
+                actualQuantity = (quantity / 100) * batchSize;
+            }
+
+            calculatedQuantity.textContent = `This equals ${actualQuantity.toFixed(3)} ${unit} for a batch of ${batchSize} units`;
+        }
+
+        const cost = actualQuantity * price;
+        estimatedCost.value = cost.toFixed(2);
+    }
+
+    function toggleQuantityType() {
+        const isPercentage = quantityTypeSelect.value === 'percentage';
+        percentageInfo.style.display = isPercentage ? 'block' : 'none';
+        updateMaterialInfo();
+
+        // Update form submission to include the actual calculated quantity
+        if (isPercentage) {
+            quantityInput.setAttribute('data-percentage', quantityInput.value);
+        }
+    }
+
+    materialSelect.addEventListener('change', updateMaterialInfo);
+    quantityInput.addEventListener('input', calculateCost);
+    quantityTypeSelect.addEventListener('change', toggleQuantityType);
+
+    // Modify form submission to handle percentage calculations
+    document.getElementById('recipeForm').addEventListener('submit', function(e) {
+        if (quantityTypeSelect.value === 'percentage') {
+            const selectedOption = materialSelect.options[materialSelect.selectedIndex];
+            const unit = selectedOption.dataset.unit;
+            let percentage = parseFloat(quantityInput.value);
+            let actualQuantity = percentage;
+
+            // Convert percentage to actual quantity before submission
+            if (unit === 'kg') {
+                const estimatedBatchWeight = batchSize * 0.02; // 20g per unit default
+                actualQuantity = (percentage / 100) * estimatedBatchWeight;
+            } else if (unit === 'ml' || unit === 'L') {
+                actualQuantity = (percentage / 100) * batchSize * (unit === 'L' ? 0.001 : 1);
+            } else {
+                actualQuantity = (percentage / 100) * batchSize;
+            }
+
+            // Create a hidden input with the actual quantity
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'actual_quantity';
+            hiddenInput.value = actualQuantity;
+            this.appendChild(hiddenInput);
+
+            // Also send the percentage for record keeping
+            const percentageInput = document.createElement('input');
+            percentageInput.type = 'hidden';
+            percentageInput.name = 'percentage_value';
+            percentageInput.value = percentage;
+            this.appendChild(percentageInput);
+        }
+    });
+
+    // Handle edit recipe button clicks
+    document.querySelectorAll('.edit-recipe-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const materialId = this.dataset.materialId;
+            const materialName = this.dataset.materialName;
+            const quantity = this.dataset.quantity;
+
+            document.getElementById('edit-material-id').value = materialId;
+            document.getElementById('edit-material-name').value = materialName;
+            document.getElementById('edit-quantity').value = quantity;
+
+            const modal = new bootstrap.Modal(document.getElementById('editRecipeModal'));
+            modal.show();
+        });
+    });
+
+    // Handle edit recipe form submission
+    document.getElementById('editRecipeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        fetch('{{ url_for("add_recipe_item", product_id=product.id) }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            }
+        });
+    });
+
+    // Handle delete recipe button clicks
+    document.querySelectorAll('.delete-recipe-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            if (confirm('Are you sure you want to remove this item from the recipe?')) {
+                // You'll need to implement a delete route in your Flask app
+                const recipeId = this.dataset.recipeId;
+                // For now, we'll just reload - you should implement proper deletion
+                alert('Delete functionality needs to be implemented in the backend');
+            }
+        });
+    });
+
+    // Auto-save functionality (optional)
+    let saveTimeout;
+    quantityInput.addEventListener('input', function() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(function() {
+            // Auto-save logic can be added here
+        }, 1000);
+    });
+});
+</script>
+
+<style>
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.card-title {
+    color: #495057;
+}
+
+.bg-light .card-body {
+    background-color: #f8f9fa !important;
+}
+
+.badge {
+    font-size: 0.7em;
+}
+
+.table-primary td {
+    background-color: #cfe2ff !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-danger:hover {
+    transform: translateY(-1px);
+    transition: all 0.2s;
+}
+
+.text-success.h4,
+.text-warning.h4 {
+    margin-bottom: 0.25rem;
+}
+</style>
+{% endblock %}

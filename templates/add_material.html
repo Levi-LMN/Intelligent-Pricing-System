@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3>Add New Raw Material</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Material Name</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="unit" class="form-label">Unit of Measurement</label>
+                                <select class="form-control" id="unit" name="unit" required>
+                                    <option value="">Select Unit</option>
+                                    <option value="kg">Kilograms (kg)</option>
+                                    <option value="liters">Liters</option>
+                                    <option value="pieces">Pieces</option>
+                                    <option value="grams">Grams</option>
+                                    <option value="ml">Milliliters (ml)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="current_price" class="form-label">Current Price (KSh)</label>
+                                <input type="number" step="0.01" class="form-control" id="current_price" name="current_price" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="supplier" class="form-label">Supplier</label>
+                                <input type="text" class="form-control" id="supplier" name="supplier">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="stock_quantity" class="form-label">Current Stock Quantity</label>
+                                <input type="number" step="0.01" class="form-control" id="stock_quantity" name="stock_quantity" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="minimum_stock" class="form-label">Minimum Stock Level</label>
+                                <input type="number" step="0.01" class="form-control" id="minimum_stock" name="minimum_stock" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('materials') }}" class="btn btn-secondary me-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Add Material</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

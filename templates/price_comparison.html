@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-4">
+    <h1>Price Comparison</h1>
+    <p class="text-muted">Compare your product costs with market prices to identify opportunities</p>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Select Product for Comparison</h5>
+            </div>
+            <div class="card-body">
+                <form id="comparisonForm">
+                    <div class="mb-3">
+                        <label for="product_select" class="form-label">Select Product</label>
+                        <select class="form-control" id="product_select" name="product_id" required>
+                            <option value="">Choose a product...</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-balance-scale me-2"></i>Compare Prices
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div id="comparisonResults" class="d-none">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Price Comparison Results</h5>
+                </div>
+                <div class="card-body">
+                    <div id="productCostInfo" class="mb-4"></div>
+                    
+                    <h6>Market Competitor Prices:</h6>
+                    <div id="marketPricesTable"></div>
+                    
+                    <div class="mt-4">
+                        <canvas id="priceComparisonChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="comparisonLoading" class="d-none text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Analyzing price comparison...</p>
+        </div>
+        
+        <div id="noComparison" class="text-center text-muted">
+            <i class="fas fa-chart-bar fa-3x mb-3"></i>
+            <p>Select a product to compare prices with market data</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('comparisonForm');
+    const comparisonResults = document.getElementById('comparisonResults');
+    const comparisonLoading = document.getElementById('comparisonLoading');
+    const noComparison = document.getElementById('noComparison');
+    
+    let priceChart = null;
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const productId = formData.get('product_id');
+        
+        // Show loading spinner
+        comparisonLoading.classList.remove('d-none');
+        comparisonResults.classList.add('d-none');
+        noComparison.classList.add('d-none');
+        
+        fetch(`/api/price-comparison/${productId}`)
+        .then(response => response.json())
+        .then(data => {
+            comparisonLoading.classList.add('d-none');
+            
+            if (data.success) {
+                displayComparisonResults(data.product_cost, data.market_data);
+                comparisonResults.classList.remove('d-none');
+            } else {
+                alert('Error comparing prices: ' + data.error);
+                noComparison.classList.remove('d-none');
+            }
+        })
+        .catch(error => {
+            comparisonLoading.classList.add('d-none');
+            alert('Error comparing prices: ' + error.message);
+            noComparison.classList.remove('d-none');
+        });
+    });
+    
+    function displayComparisonResults(productCost, marketData) {
+        // Display product cost information
+        const productCostInfo = document.getElementById('productCostInfo');
+        productCostInfo.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">Your Product: ${productCost.name}</h6>
+                            <p><strong>Total Cost:</strong> KSh ${productCost.total_cost.toFixed(2)}</p>
+                            <p><strong>Recommended Price:</strong> KSh ${productCost.recommended_price.toFixed(2)}</p>
+                            <p><strong>Cost per Unit:</strong> KSh ${productCost.cost_per_unit.toFixed(2)}</p>
+                            <p><strong>Price per Unit:</strong> KSh ${productCost.price_per_unit.toFixed(2)}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h6 class="card-title">Market Analysis</h6>
+                            <p><strong>Competitor Products:</strong> ${marketData.length}</p>
+                            <p><strong>Average Market Price:</strong> KSh ${marketData.length > 0 ? (marketData.reduce((sum, item) => sum + item.price, 0) / marketData.length).toFixed(2) : '0.00'}</p>
+                            <p><strong>Price Position:</strong> ${getPricePosition(productCost.recommended_price, marketData)}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Display market prices table
+        const marketPricesTable = document.getElementById('marketPricesTable');
+        if (marketData.length > 0) {
+            let tableHtml = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Price</th>
+                                <th>Size</th>
+                                <th>Competitor</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            marketData.forEach(item => {
+                const priceDiff = item.price - productCost.recommended_price;
+                const diffClass = priceDiff > 0 ? 'text-success' : 'text-danger';
+                const diffIcon = priceDiff > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                
+                tableHtml += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>
+                            KSh ${item.price.toFixed(2)}
+                            <small class="${diffClass}">
+                                <i class="fas ${diffIcon}"></i>
+                                ${Math.abs(priceDiff).toFixed(2)}
+                            </small>
+                        </td>
+                        <td>${item.size_info}</td>
+                        <td>${item.competitor}</td>
+                        <td>${item.scraped_at}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHtml += '</tbody></table></div>';
+            marketPricesTable.innerHTML = tableHtml;
+        } else {
+            marketPricesTable.innerHTML = '<div class="alert alert-info">No market data available for comparison. Try scraping competitor prices first.</div>';
+        }
+        
+        // Create price comparison chart
+        if (marketData.length > 0) {
+            const ctx = document.getElementById('priceComparisonChart').getContext('2d');
+            
+            if (priceChart) {
+                priceChart.destroy();
+            }
+            
+            const chartLabels = ['Your Price', ...marketData.map(item => item.competitor)];
+            const chartData = [productCost.recommended_price, ...marketData.map(item => item.price)];
+            const chartColors = ['#FF6384', ...marketData.map(() => '#36A2EB')];
+            
+            priceChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        label: 'Price (KSh)',
+                        data: chartData,
+                        backgroundColor: chartColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Price Comparison Chart'
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Price (KSh)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    function getPricePosition(yourPrice, marketData) {
+        if (marketData.length === 0) return 'No comparison data';
+        
+        const avgMarketPrice = marketData.reduce((sum, item) => sum + item.price, 0) / marketData.length;
+        const priceDiff = ((yourPrice - avgMarketPrice) / avgMarketPrice) * 100;
+        
+        if (priceDiff > 10) return 'Above Market (+' + priceDiff.toFixed(1) + '%)';
+        if (priceDiff < -10) return 'Below Market (' + priceDiff.toFixed(1) + '%)';
+        return 'Competitive (' + (priceDiff >= 0 ? '+' : '') + priceDiff.toFixed(1) + '%)';
+    }
+});
+</script>
+{% endblock %}
